@@ -1,0 +1,83 @@
+name: Scan Smart Contracts
+
+on:
+  workflow_dispatch:
+    inputs:
+      contract_address:
+        description: 'Contract address to scan'
+        required: true
+        type: string
+      chain:
+        description: 'Chain to scan on'
+        required: false
+        default: 'base'
+        type: choice
+        options:
+          - base
+          - ethereum
+          - optimism
+          - arbitrum
+          - polygon
+      output_format:
+        description: 'Output format'
+        required: false
+        default: 'markdown'
+        type: choice
+        options:
+          - markdown
+          - json
+      min_severity:
+        description: 'Minimum severity to report'
+        required: false
+        default: 'low'
+        type: choice
+        options:
+          - info
+          - low
+          - medium
+          - high
+  push:
+    paths:
+      - 'contracts/**'
+      - 'src/**'
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install base-scanner
+        run: pip install .
+
+      - name: Run scan (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          base-scanner "${{ inputs.contract_address }}" \
+            --chain "${{ inputs.chain }}" \
+            --min-severity "${{ inputs.min_severity }}" \
+            ${{ inputs.output_format == 'json' && '--json' || '' }} \
+            | tee scan-report.${{ inputs.output_format == 'json' && 'json' || 'md' }}
+
+      - name: Run scan (push trigger)
+        if: github.event_name == 'push'
+        run: |
+          echo "Scanning for Solidity files in push..."
+          find . -name "*.sol" -not -path "*/node_modules/*" | head -5 | while read f; do
+            echo "Found: $f"
+          done
+          echo "Note: base-scanner scans deployed contracts by address."
+          echo "Use workflow_dispatch to scan a specific contract."
+
+      - name: Upload scan report
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-report
+          path: scan-report.*
+          retention-days: 30

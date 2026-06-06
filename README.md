@@ -13,6 +13,57 @@ A lightweight on-chain security scanner for Base chain smart contracts. Fetches 
 - **JSON output** for programmatic use
 - **Multi-chain ready** — works on Base (default) and any EVM chain supported by Sourcify
 
+## GitHub Actions
+
+Use base-scanner as a GitHub Action to automatically scan contracts in your CI pipeline.
+
+### Manual trigger (scan a specific contract)
+
+```yaml
+- uses: friendlygeorge/base-scanner@main
+  with:
+    contract_address: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5'
+    chain: 'base'
+    min_severity: 'low'
+    output_format: 'markdown'
+```
+
+### In your workflow
+
+```yaml
+name: Security Scan
+on:
+  workflow_dispatch:
+    inputs:
+      contract_address:
+        description: 'Contract to scan'
+        required: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: friendlygeorge/base-scanner@main
+        with:
+          contract_address: ${{ github.event.inputs.contract_address }}
+          chain: 'base'
+          min_severity: 'low'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scan-report
+          path: scan-report.*
+```
+
+### Available inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `contract_address` | Yes | — | Contract address to scan |
+| `chain` | No | `base` | Chain (base, ethereum, optimism, arbitrum, polygon) |
+| `min_severity` | No | `low` | Minimum severity to report (info, low, medium, high) |
+| `output_format` | No | `markdown` | Output format (markdown, json) |
+
 ## Security Checks
 
 | Check | Severity | What it detects |
